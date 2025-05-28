@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş ve Kayıt Sayfası</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .link {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Giriş Yap</h2>
+    <form action="" method="POST">
+        <div class="input-group">
+            <label for="username">Kullanıcı Adı</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="input-group">
+            <label for="password">Şifre</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="button" onclick="checkUserExist()" class="btn">Giriş Yap</button>
+    </form>
+    <div class="link">
+        <p>Hesabınız yok mu? <a href="#" onclick="toggleForms()">Kayıt Ol</a></p>
+    </div>
+</div>
+<!-- Kayıt Olma Formu -->
+<div class="container" id="register-form" style="display: none;">
+    <h2>Kayıt Ol</h2>
+    <form action="register.html" method="POST">
+        <div class="input-group">
+            <label for="new-username">Kullanıcı Adı</label>
+            <input type="text" id="new-username" name="new-username" required>
+        </div>
+        <div class="input-group">
+            <label for="new-password">Şifre</label>
+            <input type="password" id="new-password" name="new-password" required>
+        </div>
+        <button type="button" onclick="createUser()" class="btn">Kayıt Ol</button>
+    </form>
+    <div class="link">
+        <p>Zaten hesabınız var mı? <a href="#" onclick="toggleForms()">Giriş Yap</a></p>
+    </div>
+</div>
+
+<script>
+    function toggleForms() {
+        var loginForm = document.querySelector('.container');
+        var registerForm = document.getElementById('register-form');
+        if (loginForm.style.display === 'none') {
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+        } else {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+        }
+    }
+
+    async function checkUserExist() {
+        let username = document.getElementById('username').value.trim();
+        let password = document.getElementById('password').value.trim();
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/login/checkUser', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            const data = await response.json()
+            if (data.success == true) {
+                document.body.innerHTML =data.html
+                fetch('http://127.0.0.1:5000/api/prepareData', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                 })
+                setTimeout(function (){ //bu kısımda verileri eğiticeğiz
+                    window.location.href = "http://127.0.0.1:5000/chat"
+                },15000)
+            } else {
+                alert(data.message)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+
+
+    }
+
+    function createUser() {
+        let username = document.getElementById('new-username').value.trim();
+        let password = document.getElementById('new-password').value.trim();
+        fetch('http://127.0.0.1:5000/api/login/createUser', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        })
+            .then((response) => response.json())
+            .then(function (data) {
+                if(data[0] === true) {
+                    alert("User Successfully Created")
+                    window.location.href = "http://127.0.0.1:5000/login"
+                }
+                else {
+                    alert(data[1])
+                }
+            })
+    }
+</script>
+</body>
+</html>

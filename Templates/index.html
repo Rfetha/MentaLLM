@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot Assistant</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1e1e2e;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            background: #25253a;
+            border-radius: 10px;
+            max-width: 1200px;
+            width: 100%;
+            height: 80vh;
+            display: flex;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Sidebar - Yeni Chat Butonu */
+        .sidebar {
+            width: 250px;
+            background: #2e2e4a;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .sidebar button {
+            padding: 10px 16px;
+            background: #0078ff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .sidebar button:hover {
+            background: #005bbd;
+        }
+
+        /* Chat Alanı */
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Üst Bar - Çıkış Yap Butonu */
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px;
+            background: #25253a;
+        }
+
+        .top-bar button {
+            padding: 8px 12px;
+            background: #ff4d4d;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 10px;
+            border: 1px solid #3a3a5a;
+            border-radius: 8px;
+            padding: 10px;
+            background: #2e2e4a;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            max-width: 75%;
+            font-size: 1em;
+            display: inline-block;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            background: #454572;
+            color: white;
+            border-radius: 10px 10px 0 10px;
+        }
+
+        .chat-message.bot {
+            align-self: flex-start;
+            background: #353556;
+            color: white;
+            border-radius: 10px 10px 10px 0;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+        }
+
+        .input-area textarea {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #3a3a5a;
+            border-radius: 6px;
+            resize: none;
+            background: #2e2e4a;
+            color: #fff;
+            font-size: 1em;
+            outline: none;
+        }
+
+        .input-area button {
+            padding: 10px 16px;
+            background: #0078ff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-left: 8px;
+            transition: 0.3s;
+        }
+
+        .input-area button:hover {
+            background: #005bbd;
+        }
+
+        .typing-indicator {
+            font-style: italic;
+            color: #b3b3ff;
+            margin: 10px;
+            display: none;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 0;
+            padding: 10px 0;
+        }
+
+        .user-chat button {
+            width: 100%;
+            background-color: #1e1e2e;
+        }
+
+        .user-chat .active-chat {
+            background: #f3f3f3;
+            cursor: not-allowed;
+            pointer-events: none;
+            color: #1e1e2e;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Sol taraf: Sidebar -->
+    <div class="sidebar">
+        <div>
+            <button style="background-color: #2980b9; width: 100%" class="new-chat-button"
+                    onclick="newChat(existingChat=false)">Yeni
+                Sohbet
+            </button>
+        </div>
+        <div class="user-chats" id="user-chats"></div>
+        <!-- İsteğe bağlı: Önceden açılmış sohbetleri listeleyebilirsiniz -->
+    </div>
+    <!-- Sağ taraf: Chat alanı -->
+    <div class="chat-area">
+        <!-- Üst bar: Çıkış Yap Butonu -->
+        <div class="top-bar">
+            <button onclick="logout()">Çıkış Yap</button>
+        </div>
+        <h1>Chatbot Assistant</h1>
+        <div class="chat-box" id="chat-box">
+            <!-- Sohbet mesajları buraya gelecek -->
+        </div>
+        <div class="typing-indicator" id="typing-indicator">Yazıyor...</div>
+        <div class="input-area">
+            <textarea id="user-input" rows="3" placeholder="Mesajınızı girin..."></textarea>
+            <button onclick="sendMessagetoAssistant()" type="button">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let chat_id_counter = 0;
+    let active_chat_history = {}
+    let active_chat_id = 0;
+    let userChatDiv = document.getElementById("user-chats");
+
+    // Giriş fonksiyonu: her şey burada başlasın
+    async function init() {
+        await loadChatHistory(); // Önce chat geçmişi yüklensin
+        if (!userChatDiv.hasChildNodes()) {
+            console.log("No chats found, creating first chat.")
+            newChat(false);
+            active_chat_id = "chat" + 1;
+            let activeChat = document.getElementById(active_chat_id)
+            activeChat.classList.add("active-chat")
+            changeActiveSession()
+        }
+        let activeChat = document.getElementById("chat" + 1)
+        activeChat.classList.add("active-chat")
+        active_chat_id = "chat" + 1
+        changeActiveSession()
+        await get_requested_chat_history(); // ✅ burada bekliyoruz artık
+        renderConversationHistory(active_chat_history); // veri artık kesin var
+    }
+
+    init(); // Sayfa yüklendiğinde her şeyi başlat
+
+    async function loadChatHistory() {
+        console.log("load chat history working")
+        try {
+            let response = await fetch('http://127.0.0.1:5000/api/session', {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'},
+            });
+            let data = await response.json();
+            let session_count = data['session_count'];
+            console.log("session count is : ", session_count)
+            for (let i = 1; i <= session_count; i++) {
+                chat_id_counter = i;
+                newChat(true);
+            }
+        } catch (error) {
+            console.error('Error loading chat history:', error);
+            appendMessage("An error occurred. Please try again.", 'bot');
+        }
+    }
+
+    function newChat(existingChat) {
+        if (!existingChat) {
+            chat_id_counter++;
+            fetch('http://127.0.0.1:5000/api/session', {
+                method: 'UPDATE',
+                headers: {'Content-Type': 'application/json'},
+            });
+        }
+        let allChats = document.getElementById('user-chats');
+        let chatDiv = document.createElement("div")
+        let newChatButton = document.createElement("button")
+        newChatButton.id = "chat" + chat_id_counter
+        chatDiv.className = "user-chat"
+        newChatButton.classList.add("chat-button")
+        newChatButton.innerText = "Newchat" + chat_id_counter
+        newChatButton.addEventListener("click", changeChat)
+        chatDiv.appendChild(newChatButton)
+        allChats.appendChild(chatDiv)
+    }
+
+    function changeActiveSession() {
+        fetch('http://127.0.0.1:5000/api/activeSession', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_session: active_chat_id})
+        }).then(response => response.json())
+            .then(data => {
+
+            })
+            .catch(error => {
+                console.error('Change Chat Error:', error);
+            });
+    }
+
+    async function get_requested_chat_history() {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/requestedChatData', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chat_id: active_chat_id})
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("data_history", data["conversation_history_by_id"]);
+            active_chat_history = data["conversation_history_by_id"];
+
+        } catch (error) {
+            console.error('Change Chat Error:', error);
+        }
+    }
+
+    async function changeChat() {
+        document.querySelectorAll(".chat-button").forEach(b => {
+            b.classList.remove("active-chat");
+        });
+
+        this.classList.add("active-chat");
+        active_chat_id = this.id;
+        console.log("active chat: ", active_chat_id);
+
+        changeActiveSession();
+
+        console.log("chat history fetching...");
+        await get_requested_chat_history(); // ✅ burada bekliyoruz artık
+
+        console.log("chat history fetched", active_chat_history);
+        renderConversationHistory(active_chat_history); // veri artık kesin var
+    }
+
+
+    function logout() {
+        // Çıkış işlemini gerçekleştirin. Örneğin, oturum temizleme veya yönlendirme
+        alert('Çıkış yapılıyor...');
+        fetch('http://127.0.0.1:5000/api/logout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        })
+        // Örneğin: window.location.href = 'login.html';
+    }
+
+    function appendMessage(text, sender) {
+        var chatBox = document.getElementById('chat-box');
+        var messageDiv = document.createElement('div');
+        messageDiv.className = sender === 'user' ? 'chat-message user' : 'chat-message bot';
+        messageDiv.textContent = text;
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    }
+
+    function renderConversationHistory(conversation_history_by_id) {
+        let chatBox = document.getElementById("chat-box");
+
+        if (!chatBox || !Array.isArray(conversation_history_by_id)) return;
+        console.log("rendering chat history...")
+
+        chatBox.innerHTML = ""; // Önce temizle (istersen kaldırabilirsin)
+
+        conversation_history_by_id.forEach(entry => {
+            // Kullanıcı mesajı
+            const userMessage = document.createElement("div");
+            userMessage.classList.add("chat-message", "user");
+            userMessage.textContent = entry.question;
+            chatBox.appendChild(userMessage);
+
+            // Bot cevabı
+            const botMessage = document.createElement("div");
+            botMessage.classList.add("chat-message", "bot");
+            botMessage.textContent = entry.answer;
+            chatBox.appendChild(botMessage);
+        });
+    }
+
+    function sendMessagetoAssistant() {
+        let userMessage = document.getElementById('user-input').value.trim();
+        console.log(userMessage);
+        if (userMessage === '') return;
+
+        appendMessage(userMessage, 'user');
+        document.getElementById('user-input').value = ''; // Clear input
+        document.getElementById('typing-indicator').style.display = 'block';
+
+        fetch('http://127.0.0.1:5000/api/chatbot', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: userMessage})
+        })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('typing-indicator').style.display = 'none';
+                appendMessage(data.response, 'bot');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('typing-indicator').style.display = 'none';
+                appendMessage("An error occurred. Please try again.", 'bot');
+            });
+    }
+</script>
+</body>
+</html>
