@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint, render_template, redirect, url_for
-from ChatbotServices.rag import llm_response, initialize_llm, load_environment, prepare_data
+from ChatbotServices.rag import llm_response, initialize_llm, load_environment, prepare_data,llm_response_for_header
 from UserInfo import userInfo
-from DatabaseServices.database import setup_database, get_conversation_history, update_user_session_count,get_conversation_by_chat_id
-#EKSTRA BİR CHAT EKLİYOR!
+from DatabaseServices.database import setup_database, get_conversation_history, update_user_session_count,get_conversation_by_chat_id,delete_chat_from_conversation,get_unique_sessions,first_message_check
 # Veritabanı başlatma
 setup_database()
 
@@ -35,17 +34,20 @@ def get_retriever():
 
 @chatbot_bp.route("/api/chatbot", methods=["POST"])
 def handle_chat_request():
+    response_data={}
     """Kullanıcı mesajını işler ve chatbot yanıtını döndürür"""
+    active_chat = userInfo.get_active_session()
     try:
         request_data = request.get_json()
         if not request_data or "message" not in request_data:
             return jsonify({"error": "Geçersiz istek formatı"}), 400
-        print("user is : ", userInfo.get_user())
         user_message = request_data["message"]
-        print("user message : ", user_message)
+        if not get_conversation_by_chat_id(active_chat):
+            chat_header = llm_response_for_header(user_message)
+            response_data["chat_header"] = chat_header
         bot_response = llm_response(user_message)
-        print("bot_response: ", bot_response)
-        return jsonify({"response": bot_response})
+        response_data["response"] = bot_response
+        return jsonify(response_data)
 
     except Exception as error:
         print(f"Chatbot hatası: {str(error)}")
@@ -54,14 +56,14 @@ def handle_chat_request():
 
 @chatbot_bp.route("/api/session", methods=["UPDATE"])
 def update_session_count():
-    update_user_session_count()
+    update_user_session_count('+')
     return jsonify({"session": userInfo.get_user_session()})
 
 
 @chatbot_bp.route("/api/session", methods=["GET"])
 def get_session_count():
-    return jsonify({"session_count": userInfo.get_user_session()})
-
+    print("get uniq sessions loading : ->>>>>", get_unique_sessions())
+    return jsonify({"session_count": get_unique_sessions()})
 
 @chatbot_bp.route("/api/session", methods=["POST"])
 def set_session_count():
@@ -82,7 +84,14 @@ def get_chat_history():
     chat_history = get_conversation_history(10)
     print("chat_history: ", chat_history)
     return jsonify({"chat_history": chat_history})
-
+@chatbot_bp.route("/api/deleteChat", methods=["DELETE"])
+def del_user_chat():
+    chat_id = request.get_json()["chat_id"]
+    username = userInfo.get_user()
+    delete_chat_from_conversation(username,chat_id)
+    update_user_session_count('-')
+    print("deleting chat_id: ", chat_id)
+    return jsonify({"successfully deleted": chat_id})
 
 @chatbot_bp.route("/api/requestedChatData", methods=["POST"])
 def get_requested_chat_data():

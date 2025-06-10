@@ -159,6 +159,19 @@ def get_conversation_history(limit):
     conn.close()
     return conversation_history
 
+def get_unique_sessions():
+    conn=sqlite3.connect('users.db')
+    cur=conn.cursor()
+    username = userInfo.get_user()
+    cur.execute("SELECT conversation_history FROM users WHERE username=?", (username,))
+    row=cur.fetchone()
+    conn.close()
+    if not row: return []
+    hist_json=row[0]
+    hist=json.loads(hist_json)
+    session_ids = {entry['session_id'] for entry in hist.values()}
+    return list(session_ids)
+
 
 def get_conversation_by_chat_id(chat_id):
     conn = None
@@ -201,11 +214,15 @@ def get_conversation_by_chat_id(chat_id):
             conn.close()
 
 
-def update_user_session_count():
+def update_user_session_count(operator):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
+    session_count = 0
     print("previous session count", userInfo.get_user_session())
-    session_count = userInfo.get_user_session() + 1
+    if operator == '+':
+        session_count = userInfo.get_user_session() + 1
+    if operator == '-':
+        session_count = userInfo.get_user_session() - 1
     userInfo.set_user_session(session_count)
     print("new session count", userInfo.get_user_session())
     username = userInfo.get_user()  # Burada istediğin kullanıcı adını belirtebilirsin
@@ -213,3 +230,61 @@ def update_user_session_count():
                    (session_count, username))
     conn.commit()
     conn.close()
+
+
+def delete_chat_from_conversation(username, chat_id):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+
+    # 1. Kullanıcının conversation_history'sini al
+    cursor.execute("SELECT conversation_history FROM users WHERE username = ?", (username,))
+    result = cursor.fetchone()
+
+    if result:
+        print(result, "result printed")
+        conversation_json = result[0]
+        print(conversation_json, "conversation_json printed")
+        try:
+            # 2. JSON olarak parse et
+            conversation_data = json.loads(conversation_json)
+
+            # 3. session_id'si chat_id olanları sil
+            filtered_data = {
+                key: value for key, value in conversation_data.items()
+                if value.get("session_id") != chat_id
+            }
+
+            # 4. Geri veritabanına yaz
+            updated_json = json.dumps(filtered_data)
+            cursor.execute("UPDATE users SET conversation_history = ? WHERE username = ?", (updated_json, username))
+            conn.commit()
+            print("Silme işlemi tamamlandı.")
+        except json.JSONDecodeError:
+            print("conversation_history alanı geçerli bir JSON değil.")
+    else:
+        print("Kullanıcı bulunamadı.")
+
+    conn.close()
+
+
+def first_message_check():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    username = userInfo.get_user()
+    active_chat_id = userInfo.get_active_session()
+    print(active_chat_id,"active_chat_id printed")
+    cursor.execute("SELECT conversation_history FROM users WHERE username = ?", (username,))
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result:
+        try:
+            conversation_list = json.loads(result[0])
+            # id'si eşleşen sohbeti filtrele
+            filtered_chat = [chat for chat in conversation_list if chat.get("id") == active_chat_id]
+            return filtered_chat  # List döner, 1 elemanlı ya da boş
+        except json.JSONDecodeError:
+            return {"error": "conversation_history geçerli bir JSON değil."}
+    else:
+        return {"error": "Kullanıcı bulunamadı."}
