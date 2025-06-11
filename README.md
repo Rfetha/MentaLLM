@@ -4,7 +4,7 @@ MentaLLM is a modular **LLM-powered mental health assistant prototype** built wi
 Users can register, log in, and engage in a personalized conversation with an AI chatbot.
 The project aims to demonstrate how LLM-based chatbot systems can be developed for both developers and researchers.
 
-## Projenin Amacı
+## Purpose of the Project
 
 This project lays the foundation for an assistant system capable of one-on-one interaction with users by leveraging Large Language Models (LLMs).
 MentaLLM goes beyond simple LLM responses by offering personalization, memory management, and knowledge-based answer generation.
@@ -19,7 +19,7 @@ Kapsamında şunlar yer alır:
 - Clean and user-friendly web interface (Jinja2 templating)
 - Architecture designed for future extensibility (compatible with REST API, JWT, Docker, etc.)
 
-## Kullanılan Teknolojiler
+## Technologies Used
 
 | Teknoloji        | Açıklama |
 |------------------|----------|
