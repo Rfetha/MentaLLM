@@ -1,4 +1,4 @@
-MentaLLM
+## MentaLLM
 
 MentaLLM is a modular **LLM-powered mental health assistant prototype** built with Flask and LangChain.
 Users can register, log in, and engage in a personalized conversation with an AI chatbot.
